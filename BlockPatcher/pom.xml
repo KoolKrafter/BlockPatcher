@@ -16,24 +16,10 @@
       <url>http://repo.bukkit.org/content/groups/public</url>
     </repository>
     <repository>
-      <id>comphenix-rep</id>
-      <name>Comphenix Maven Releases</name>
-      <url>http://repo.comphenix.net/content/groups/public</url>
+      <id>shadowvolt-repo</id>
+      <url>http://ci.shadowvolt.com/plugin/repository/everything</url>
     </repository>
   </repositories>
-  
-  <distributionManagement>
-    <repository>
-      <id>comphenix-releases</id>
-      <name>Comphenix Maven Releases</name>
-      <url>http://repo.comphenix.net/content/repositories/releases/</url>
-    </repository>
-    <snapshotRepository>
-      <id>comphenix-snapshots</id>
-      <name>Comphenix Maven Snapshots</name>
-      <url>http://repo.comphenix.net/content/repositories/snapshots/</url>
-    </snapshotRepository>
-  </distributionManagement>
   
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
@@ -121,16 +107,16 @@
   </developers>
   
   <dependencies>
-  	<dependency>
+  	<!--<dependency>
   		<groupId>org.bukkit</groupId>
   		<artifactId>craftbukkit</artifactId>
   		<version>1.7.2-R0.3-SNAPSHOT</version>
   		<scope>provided</scope>
-  	</dependency>
+  	</dependency>-->
   	<dependency>
   		<groupId>com.comphenix.protocol</groupId>
   		<artifactId>ProtocolLib</artifactId>
-  		<version>3.0.1</version>
+  		<version>3.6.3-SNAPSHOT</version>
   		<scope>provided</scope>
   	</dependency>
   </dependencies>
