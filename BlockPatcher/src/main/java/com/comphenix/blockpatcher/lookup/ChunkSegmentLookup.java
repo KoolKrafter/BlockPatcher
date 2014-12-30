@@ -3,6 +3,8 @@ package com.comphenix.blockpatcher.lookup;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import org.bukkit.Material;
+
 import com.google.common.base.Objects;
 
 /**
@@ -206,5 +208,56 @@ public class ChunkSegmentLookup implements SegmentLookup, Serializable {
 	@Override
 	public ConversionLookup deepClone() {
 		return new ChunkSegmentLookup(this);
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setBlockLookup(Material block, Material newBlock) {
+		setBlockLookup(block.getId(), newBlock.getId());
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getBlockLookup(Material block) {
+		return getBlockLookup(block.getId());
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setDataLookup(Material block, int originalDataValue, int newDataValue) {
+		setDataLookup(block.getId(), originalDataValue, newDataValue);
+		
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getDataLookup(Material block, int dataValue) {
+		return getDataLookup(block.getId(), dataValue);
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setBlockLookup(Material block, Material newBlock, int chunkY) {
+		setBlockLookup(block.getId(), newBlock.getId(), chunkY);
+		
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getBlockLookup(Material block, int chunkY) {
+		return getBlockLookup(block.getId(), chunkY);
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setDataLookup(Material block, int originalDataValue, int newDataValue, int chunkY) {
+		setDataLookup(block.getId(), originalDataValue, newDataValue, chunkY);
+		
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getDataLookup(Material block, int dataValue, int chunkY) {
+		return getDataLookup(block.getId(), dataValue, chunkY);
 	}
 }

@@ -1,5 +1,7 @@
 package com.comphenix.blockpatcher.lookup;
 
+import org.bukkit.Material;
+
 /**
  * Represents an object that maps block IDs and associated data values to some corresponding values.
  * 
@@ -56,6 +58,36 @@ public interface ConversionLookup {
 	 * @return The new data value after chunk processing.
 	 */
 	public abstract int getDataLookup(int blockID, int dataValue);
+	
+	/**
+	 * Convert the given block type into another block type.
+	 * @param block - the given block type.
+	 * @param newBlock - the new block type.
+	 */
+	public abstract void setBlockLookup(Material block, Material newBlock);
+	
+	/**
+	 * Retrieve the block ID the given block material will be converted to.
+	 * @param block - the old block material.
+	 * @return The new block ID after chunk processing.
+	 */
+	public abstract int getBlockLookup(Material block);
+	
+	/**
+	 * Converts data values of the given value into the new value.
+	 * @param block - block to match.
+	 * @param originalDataValue - data value to match.
+	 * @param newDataValue - replaced data value.
+	 */
+	public abstract void setDataLookup(Material block, int originalDataValue, int newDataValue);
+
+	/**
+	 * Retrieve the converted data value given the old block material and data value. 
+	 * @param block - the old block material.
+	 * @param dataValue - the old data value.
+	 * @return The new data value after chunk processing.
+	 */
+	public abstract int getDataLookup(Material block, int dataValue);
 	
 	/**
 	 * Create a deep clone of the current conversion lookup table.

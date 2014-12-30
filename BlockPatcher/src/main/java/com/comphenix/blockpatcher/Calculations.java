@@ -1,29 +1,14 @@
 package com.comphenix.blockpatcher;
 
-/*
- *  BlockPatcher - Safely convert one block ID to another for the client only 
- *  Copyright (C) 2012 Kristian S. Stangeland
- *
- *  This program is free software; you can redistribute it and/or modify it under the terms of the 
- *  GNU General Public License as published by the Free Software Foundation; either version 2 of 
- *  the License, or (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
- *  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
- *  See the GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License along with this program; 
- *  if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 
- *  02111-1307 USA
- *
- *  Credits:
- *   * Parts of this code was adapted from the Bukkit plugin Orebfuscator by lishid. 
- */
 import java.util.concurrent.TimeUnit;
 
-import org.bukkit.Material;
+import net.minecraft.server.v1_8_R1.Block;
+import net.minecraft.server.v1_8_R1.ChunkMap;
+import net.minecraft.server.v1_8_R1.IBlockData;
+import net.minecraft.server.v1_8_R1.MultiBlockChangeInfo;
+import net.minecraft.server.v1_8_R1.PacketPlayOutMultiBlockChange;
+
 import org.bukkit.World;
-import org.bukkit.World.Environment;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
@@ -34,9 +19,8 @@ import com.comphenix.blockpatcher.lookup.SegmentLookup;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.reflect.FieldAccessException;
 import com.comphenix.protocol.reflect.StructureModifier;
-import com.comphenix.protocol.reflect.accessors.Accessors;
-import com.comphenix.protocol.reflect.accessors.FieldAccessor;
-import com.comphenix.protocol.utility.MinecraftReflection;
+import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher;
 import com.google.common.base.Stopwatch;
 
@@ -51,22 +35,16 @@ class Calculations {
 	    public int chunkX;
 	    public int chunkZ;
 	    public int chunkMask;
-	    public int extraMask;
+	    //public int extraMask;
 	    public int chunkSectionNumber;
-	    public int extraSectionNumber;
-	    public boolean hasContinous;
 	    public byte[] data;
 	    public Player player;
 	    public int startIndex;
-	    public int size;
 	    public int blockSize;
 	}
-		
+	
 	// Useful Minecraft constants
-	private static final int BYTES_PER_NIBBLE_PART = 2048;
 	private static final int CHUNK_SEGMENTS = 16;
-	private static final int NIBBLES_REQUIRED = 4;
-	private static final int BIOME_ARRAY_LENGTH = 256;
 	
 	// Used to get a chunk's specific lookup table
 	private EventScheduler scheduler;
@@ -104,166 +82,120 @@ class Calculations {
 	}
 	
 	public void translateMapChunkBulk(PacketContainer packet, Player player) throws FieldAccessException {
-    	StructureModifier<int[]> intArrays = packet.getSpecificModifier(int[].class);
-    	StructureModifier<byte[]> byteArrays = packet.getSpecificModifier(byte[].class);
+		StructureModifier<int[]> intArrays = packet.getSpecificModifier(int[].class);
     	
-        int[] x = intArrays.read(0); // getPrivateField(packet, "c");
-        int[] z = intArrays.read(1); // getPrivateField(packet, "d");
-    	
-        ChunkInfo[] infos = new ChunkInfo[x.length];
+        int[] x = intArrays.read(0); // a
+        int[] z = intArrays.read(1); // b
         
-        int dataStartIndex = 0;
-        int[] chunkMask = intArrays.read(2); // packet.a;
-        int[] extraMask = intArrays.read(3); // packet.b;
-        
-        for (int chunkNum = 0; chunkNum < infos.length; chunkNum++) {
-            // Create an info objects
+		ChunkMap[] chunkMaps = packet.getSpecificModifier(ChunkMap[].class).read(0);
+		
+		ChunkInfo[] infos = new ChunkInfo[x.length];
+		
+		for (int chunkNum = 0; chunkNum < infos.length; chunkNum++) {
+			// Create an info objects
             ChunkInfo info = new ChunkInfo();
             infos[chunkNum] = info;
             info.player = player;
             info.chunkX = x[chunkNum];
             info.chunkZ = z[chunkNum];
-            info.chunkMask = chunkMask[chunkNum];
-            info.extraMask = extraMask[chunkNum];
-            info.hasContinous = true; // Always true
-            info.data = byteArrays.read(1); //packet.buildBuffer;
             
-            // Check for Spigot
-            if (info.data == null || info.data.length == 0) {
-            	info.data = packet.getSpecificModifier(byte[][].class).read(0)[chunkNum];
-            } else {
-            	info.startIndex = dataStartIndex;
-            }
+            ChunkMap chunkMap = chunkMaps[chunkNum];
+
+            info.chunkMask = chunkMap.b;
+            info.data = chunkMap.a;
             
             translateChunkInfoAndObfuscate(info, info.data);
-            dataStartIndex += info.size;
-        }
-    }
-	
-    // Mimic the ?? operator in C#
-    private <T> T getOrDefault(T value, T defaultIfNull) {
-    	return value != null ? value : defaultIfNull;
+		}
+		
     }
     
     public void translateMapChunk(PacketContainer packet, Player player) throws FieldAccessException  {
     	StructureModifier<Integer> ints = packet.getSpecificModifier(int.class);
-    	StructureModifier<byte[]> byteArray = packet.getSpecificModifier(byte[].class);
+    	
+    	ChunkMap chunkMap = packet.getSpecificModifier(ChunkMap.class).read(0);
         
         // Create an info objects
         ChunkInfo info = new ChunkInfo();
         info.player = player;
         info.chunkX = ints.read(0); 	// packet.a;
         info.chunkZ = ints.read(1); 	// packet.b;
-        info.chunkMask = ints.read(2); 	// packet.c;
-        info.extraMask = ints.read(3);  // packet.d;
-        info.data = byteArray.read(1);  // packet.inflatedBuffer;
-        info.hasContinous = getOrDefault(packet.getBooleans().readSafely(0), true);
+
+        info.chunkMask = chunkMap.b;
+        info.data = chunkMap.a;
+        
         info.startIndex = 0;
         
-        if (info.data != null) { 
-        	translateChunkInfoAndObfuscate(info, info.data);
-        }
+        translateChunkInfoAndObfuscate(info, info.data);
     }
         
     public void translateBlockChange(PacketContainer packet, Player player) throws FieldAccessException {
-    	StructureModifier<Integer> ints = packet.getSpecificModifier(int.class);
-    	int x = ints.read(0);
-    	int y = ints.read(1);
-    	int z = ints.read(2);
-    	int blockID = 0;
-    	int data = 0; 
+    	BlockPosition position = packet.getBlockPositionModifier().read(0);
+    	IBlockData block = packet.getSpecificModifier(IBlockData.class).read(0);
     	
-    	if (MinecraftReflection.isUsingNetty()) {
-    		blockID = packet.getBlocks().read(0).getId();
-    		data = ints.read(3);
-    	} else {
-    		blockID = ints.read(3);
-    		data = ints.read(4);
-    	}
+    	ConversionLookup lookup = cache.loadCacheOrDefault(player, position.getX() >> 4, position.getY() >> 4, position.getZ() >> 4);
     	
-    	// Get the correct table
-    	ConversionLookup lookup = cache.loadCacheOrDefault(player, x >> 4, y >> 4, z >> 4);
+    	int blockID = Block.getId(block.getBlock());
+		int data = block.getBlock().toLegacyData(block);
+		
+		int newBlockID = lookup.getBlockLookup(blockID);
+		int newData = lookup.getDataLookup(blockID, data);
     	
-    	// Convert using the tables
-    	int newBlockID = lookup.getBlockLookup(blockID);	
-    	int newData = lookup.getDataLookup(blockID, data);
-
-    	// Write the changes
-    	if (MinecraftReflection.isUsingNetty()) {
-    		packet.getBlocks().write(0, Material.getMaterial(newBlockID));
-    		ints.write(3, newData);
-    	} else {
-    		ints.write(3, newBlockID);
-    		ints.write(4, newData);
-    	}
+    	packet.getSpecificModifier(IBlockData.class).write(0, Block.getById(newBlockID).fromLegacyData(newData));
     }
         
     public void translateMultiBlockChange(PacketContainer packet, Player player) throws FieldAccessException {
-    	StructureModifier<byte[]> byteArrays = packet.getSpecificModifier(byte[].class);
-    	ChunkCoordInt coord = getChunkCoordinate(packet);
+    	ChunkCoordIntPair coord = packet.getChunkCoordIntPairs().read(0);
     	
-    	byte[] data = byteArrays.read(0);
+    	MultiBlockChangeInfo[] changeInfos = packet.getSpecificModifier(MultiBlockChangeInfo[].class).read(0);
     	
     	// Get the correct table
-    	SegmentLookup lookup = cache.loadCacheOrDefault(player, coord.x, coord.z);
+    	SegmentLookup lookup = cache.loadCacheOrDefault(player, coord.getChunkX(), coord.getChunkZ());
     	
-    	// Each updated block is stored sequentially in 4 byte sized blocks.
-    	// The content of these bytes are as follows:
-    	//
-    	// Byte index:  |       Zero        |       One       |       Two       |      Three        |
-    	// Bit index:   |  0 - 3  |  4 - 7  |    8   -   15   |   16        -       27   |  28 - 31 |
-    	// Content:     |    x    |    z    |        y        |         block id         |   data   | 
-    	//  
-    	for (int i = 0; i < data.length; i += 4) {
-    		int block = ((data[i + 2] << 4) & 0xFFF) | 
-    				    ((data[i + 3] >> 4) & 0xF);
-    		int info = data[i + 3] & 0xF;
-    		int chunkY = (data[i + 1] & 0xFF) >> 4;
+    	for (int i = 0; i < changeInfos.length; i ++) {
+    		MultiBlockChangeInfo changeInfo = changeInfos[i];
+    		IBlockData block = changeInfo.c();
+    		short d = changeInfo.b();
     		
-    		if (block >= 0) {
-	    		// Translate and write back the result
-    			info =  lookup.getDataLookup(block, info, chunkY);
-	    		block = lookup.getBlockLookup(block, chunkY);
-	    		
-	    		data[i + 2] = (byte) ((block >> 4) & 0xFF);
-	    		data[i + 3] = (byte) (((block & 0xF) << 4) | info);
-    		}
-		}
-    }
-    
-    private ChunkCoordInt getChunkCoordinate(PacketContainer packet) {
-    	StructureModifier<Integer> ints = packet.getSpecificModifier(int.class);
-    	
-    	if (ints.size() >= 2) {
-    		return new ChunkCoordInt(ints.read(0), ints.read(1));
-    	} else {
-    		// I forgot to add a wrapper - sorry
-    		return ChunkCoordInt.fromHandle(packet.getModifier().read(0));
+    		int chunkY = (d & 0x00FF) >> 4;
+    		
+	    	int blockID = Block.getId(block.getBlock());
+			int data = block.getBlock().toLegacyData(block);
+			
+			int newBlockID = lookup.getBlockLookup(blockID, chunkY);
+			int newData = lookup.getDataLookup(blockID, data, chunkY);
+	    	
+			changeInfos[i] = new MultiBlockChangeInfo((PacketPlayOutMultiBlockChange) packet.getHandle(), changeInfo.b(), Block.getById(newBlockID).fromLegacyData(newData));
     	}
     }
     
     public void translateFallingObject(PacketContainer packet, Player player) throws FieldAccessException {
-    	
     	StructureModifier<Integer> ints = packet.getSpecificModifier(int.class);
 
-    	int type = ints.read(7);
-    	int data = ints.read(8);
+    	int type = ints.read(9);
+    	int rawData = ints.read(10);
+    	
+    	int blockID = ((((rawData) & 0xFF)) | ((rawData & 0xF00) << 4));
+    	
+        int data = rawData >> 12 & 15;
     
     	// Falling object (only block ID)
     	if (type == 70) {
-        	int x = ints.read(1);
-        	int y = ints.read(2);
-        	int z = ints.read(3);
+        	int x = ints.read(1) / 32;
+        	int y = ints.read(2) / 32;
+        	int z = ints.read(3) / 32;
     		
         	// Get the correct table
         	ConversionLookup lookup = cache.loadCacheOrDefault(player, x >> 4, y >> 4, z >> 4);
     		
-    		data = lookup.getBlockLookup(data);
-    		ints.write(8, data);
+    		int newBlockID = lookup.getBlockLookup(blockID);
+    		int newData = lookup.getDataLookup(blockID, data);
+    		
+            ints.write(10, newBlockID + (newData << 12));
     	}
     }
     
-    public void translateDroppedItem(PacketContainer packet, Player player, EventScheduler scheduler) throws FieldAccessException {
+    @SuppressWarnings("deprecation")
+	public void translateDroppedItem(PacketContainer packet, Player player, EventScheduler scheduler) throws FieldAccessException {
     	
     	StructureModifier<Integer> ints = packet.getSpecificModifier(int.class);
     	
@@ -324,33 +256,7 @@ class Calculations {
             if ((info.chunkMask & (1 << i)) > 0) {
                 info.chunkSectionNumber++;
             }
-            if ((info.extraMask & (1 << i)) > 0) {
-                info.extraSectionNumber++;
-            }
         }
-        
-        // There's no sun/moon in the end or in the nether, so Minecraft doesn't sent any skylight information
-        // This optimization was added in 1.4.6. Note that ideally you should get this from the "f" (skylight) field.
-        int skylightCount = info.player.getWorld().getEnvironment() == Environment.NORMAL ? 1 : 0;
-        
-        // The total size of a chunk is the number of blocks sent (depends on the number of sections) multiplied by the 
-        // amount of bytes per block. This last figure can be calculated by adding together all the data parts:
-        //   For any block:
-        //    * Block ID          -   8 bits per block (byte)
-        //    * Block metadata    -   4 bits per block (nibble)
-        //    * Block light array -   4 bits per block
-        //   If 'worldProvider.skylight' is TRUE
-        //    * Sky light array   -   4 bits per block
-        //   If the segment has extra data:
-        //    * Add array         -   4 bits per block
-        //   Biome array - only if the entire chunk (has continous) is sent:
-        //    * Biome array       -   256 bytes
-        // 
-        // A section has 16 * 16 * 16 = 4096 blocks. 
-        info.size = BYTES_PER_NIBBLE_PART * (
-        					(NIBBLES_REQUIRED + skylightCount) * info.chunkSectionNumber + 
-        					info.extraSectionNumber) + 
-        			(info.hasContinous ? BIOME_ARRAY_LENGTH : 0);
         
         info.blockSize = 4096 * info.chunkSectionNumber;
         
@@ -380,10 +286,8 @@ class Calculations {
         int idIndexModifier = 0;
         
         int idOffset = info.startIndex;
-        int dataOffset = idOffset + info.chunkSectionNumber * 4096;
               
-		//Stopwatch watch = new Stopwatch();
-		//watch.start();
+		//Stopwatch watch = Stopwatch.createStarted();
         
         for (int i = 0; i < 16; i++) {
             // If the bitmask indicates this chunk is sent
@@ -391,44 +295,23 @@ class Calculations {
             	
             	ConversionLookup view = lookup.getSegmentView(i);
             	
-                int relativeIDStart = idIndexModifier * 4096;
-                int relativeDataStart = idIndexModifier * 2048;
-                
-                //boolean useExtraData = (info.extraMask & (1 << i)) > 0;
+                int relativeIDStart = idIndexModifier * 8192;
                 int blockIndex = idOffset + relativeIDStart;
-                int dataIndex = dataOffset + relativeDataStart;
- 
-                // Stores the extra value
-                int output = 0;
                 
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
                         for (int x = 0; x < 16; x++)  {
-                        	
-                        	int blockID = info.data[blockIndex] & 0xFF;
+                        	int blockID = (((info.data[blockIndex + 1] & 0xFF) << 4) | ((info.data[blockIndex] & 0xFF) >>> 4));
+                        	int data = info.data[blockIndex] & 15;
                         	
                             // Transform block
-                            info.data[blockIndex] = (byte) view.getBlockLookup(blockID);
+                        	int newBlockID = view.getBlockLookup(blockID);
+                        	int newData = view.getDataLookup(blockID, data);
                         	
-							if ((blockIndex & 0x1) == 0) {
-								int blockData = info.data[dataIndex] & 0xF;
-								
-								// Update the higher nibble
-								output |= view.getDataLookup(blockID, blockData);
-								
-							} else {
-								int blockData = (info.data[dataIndex] >> 4) & 0xF;
-								
-								// Update the lower nibble
-								output |= view.getDataLookup(blockID, blockData) << 4; ;
-								
-								// Write the result
-								info.data[dataIndex] = (byte) (output & 0xFF);
-								output = 0;
-								dataIndex++;
-							}
+                            info.data[blockIndex] = (byte) ((newBlockID << 4) | newData);
+                            info.data[blockIndex + 1] = (byte) (newBlockID >> 4);
 
-                            blockIndex++;
+                            blockIndex += 2;
                         }
                     }
                 }
@@ -446,43 +329,7 @@ class Calculations {
         // We're done
     }
     
-    // For Minecraft 1.7.2
-    private static class ChunkCoordInt {
-    	private static FieldAccessor COORD_X;
-    	private static FieldAccessor COORD_Z;
-    	
-    	public final int x;
-    	public final int z;
-
-    	/**
-    	 * Construct a new chunk coordinate.
-    	 * @param x - the x index of the chunk.
-    	 * @param z - the z index of the chunk.
-    	 */
-    	public ChunkCoordInt(int x, int z) {
-			this.x = x;
-			this.z = z;
-		}
-
-    	/**
-    	 * Retrieve a new chunk coord from an object handle.
-    	 * @param handle - the handle.
-    	 * @return The chunk coordinate.
-    	 */
-		public static ChunkCoordInt fromHandle(Object handle) {
-    		if (COORD_X == null || COORD_Z == null) {
-    			COORD_X = Accessors.getFieldAccessor(handle.getClass(), "x", true);
-    			COORD_Z = Accessors.getFieldAccessor(handle.getClass(), "z", true);
-    		}
-    		
-    		return new ChunkCoordInt(
-				 (Integer) COORD_X.get(handle),
-				 (Integer) COORD_Z.get(handle)
-    		);
-    	}
-    }
-    
 	public static double getMilliseconds(Stopwatch watch) {
-		return watch.elapsedTime(TimeUnit.NANOSECONDS) / 1000000.0;
+		return watch.elapsed(TimeUnit.NANOSECONDS) / 1000000.0;
 	}
 }

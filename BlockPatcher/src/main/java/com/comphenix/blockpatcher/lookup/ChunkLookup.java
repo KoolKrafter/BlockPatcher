@@ -3,6 +3,8 @@ package com.comphenix.blockpatcher.lookup;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import org.bukkit.Material;
+
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 
@@ -149,5 +151,30 @@ public class ChunkLookup implements ConversionLookup, Serializable {
 			values[i] = (byte) (i % entries);
 		}
 		return values;
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setBlockLookup(Material block, Material newBlock) {
+		setBlockLookup(block.getId(), newBlock.getId());
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getBlockLookup(Material block) {
+		return getBlockLookup(block.getId());
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void setDataLookup(Material block, int originalDataValue, int newDataValue) {
+		setDataLookup(block.getId(), originalDataValue, newDataValue);
+		
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public int getDataLookup(Material block, int dataValue) {
+		return getDataLookup(block.getId(), dataValue);
 	}
 }
