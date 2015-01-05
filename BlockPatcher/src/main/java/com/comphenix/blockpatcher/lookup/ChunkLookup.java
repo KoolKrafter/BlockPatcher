@@ -45,8 +45,8 @@ public class ChunkLookup implements ConversionLookup, Serializable {
 	 * @param dataLookup 
 	 */
 	public ChunkLookup(byte[] blockLookup, byte[] dataLookup) {
-		this.blockLookup = blockLookup != null ? blockLookup : getIdentityTranslation(256);
-		this.dataLookup = dataLookup != null ? dataLookup : getDataIdentity(256, 16);
+		this.blockLookup = blockLookup != null ? blockLookup : getIdentityTranslation(4096);
+		this.dataLookup = dataLookup != null ? dataLookup : getDataIdentity(4096, 16);
 	}
 	
 	/**
@@ -70,8 +70,8 @@ public class ChunkLookup implements ConversionLookup, Serializable {
 	
 	@Override
 	public void setBlockLookup(int blockID, int newBlockID) {
-		Preconditions.checkPositionIndex(blockID, 256, "Block ID must be in the range 0 - 256");
-		Preconditions.checkPositionIndex(newBlockID, 256, "New block ID must be in the range 0 - 256");
+		Preconditions.checkPositionIndex(blockID, 4096, "Block ID must be in the range 0 - 4096");
+		Preconditions.checkPositionIndex(newBlockID, 4096, "New block ID must be in the range 0 - 4096");
 
 		blockLookup[blockID] = (byte) newBlockID;
 	}
@@ -84,7 +84,7 @@ public class ChunkLookup implements ConversionLookup, Serializable {
 	
 	@Override
 	public void setDataLookup(int blockID, int originalDataValue, int newDataValue) {
-		Preconditions.checkPositionIndex(blockID, 256, "Block ID must be in the range 0 - 256");
+		Preconditions.checkPositionIndex(blockID, 4096, "Block ID must be in the range 0 - 4096");
 		Preconditions.checkPositionIndex(originalDataValue, 16, "Original data value must be in the range 0 - 15");
 		Preconditions.checkPositionIndex(newDataValue, 16, "New data value must be in the range 0 - 15");
 		
