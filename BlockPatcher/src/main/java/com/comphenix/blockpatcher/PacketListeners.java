@@ -74,7 +74,8 @@ class PacketListeners {
 					MULTI_BLOCK_CHANGE, 
 					SPAWN_ENTITY,
 					SET_SLOT,
-					WINDOW_ITEMS) {
+					WINDOW_ITEMS,
+					ENTITY_EQUIPMENT) {
 				public void onPacketSending(PacketEvent event) {
 					try {
 						PacketContainer packet = event.getPacket();
@@ -100,6 +101,9 @@ class PacketListeners {
 							scheduler.computeItemConversion(stacks, player, true);
 						} else if (type == WINDOW_ITEMS) {
 							stacks = packet.getItemArrayModifier().read(0);
+							scheduler.computeItemConversion(stacks, player, true);
+						} else if (type == ENTITY_EQUIPMENT) {
+							stacks = new ItemStack[] { packet.getItemModifier().read(0) };
 							scheduler.computeItemConversion(stacks, player, true);
 						}
 
